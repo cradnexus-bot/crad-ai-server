@@ -1,4 +1,4 @@
-import cv2
+code = '''import cv2
 import numpy as np
 import base64
 from ultralytics import YOLO
@@ -67,3 +67,8 @@ class ROIMotionDetector:
                 "human_detected":human_detected,
                 "details":" | ".join(details_parts),
                 "annotated_image":ann_b64}
+'''
+
+with open(r'D:\crad-ai-server\detectors\roi_motion.py', 'w', encoding='utf-8') as f:
+    f.write(code)
+print("File written successfully!")
