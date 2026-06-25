@@ -3,7 +3,7 @@ import numpy as np
 import base64
 from ultralytics import YOLO
 
-MOTION_THRESHOLD = 1500
+MOTION_THRESHOLD = 500
 YOLO_CONFIDENCE = 0.35
 COLORS = [(0,0,255),(0,255,0),(255,0,0),(0,255,255),(255,0,255),(255,255,0)]
 
