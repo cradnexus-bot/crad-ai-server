@@ -15,7 +15,9 @@ COPY . .
 
 RUN mkdir -p models && \
     curl -L -o models/yolov8n.pt \
-    https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
+    https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt && \
+    curl -L -o models/fire_best.pt \
+    https://github.com/tejascrad/crad-ai-server/releases/download/v1.0/fire_best.pt
 
 EXPOSE 8765
 
