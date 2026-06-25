@@ -54,13 +54,13 @@ class ROIMotionDetector:
             cv2.fillPoly(mask,[np.array(roi_points,np.int32)],255)
             motion_roi = cv2.bitwise_and(thresh, mask)
             motion_pixels = cv2.countNonZero(motion_roi)
-            human_found, person_boxes = False, []
-            if motion_pixels > MOTION_THRESHOLD:
-                human_found, person_boxes = self._person_inside_roi(frame, roi_points)
-                if human_found:
-                    human_detected = True
-                    alert_count += 1
-                    details_parts.append(f"Human detected in ROI {roi_idx+1}")
+	    human_found, person_boxes = False, []
+	    # Run YOLO on every frame — no motion gate
+            human_found, person_boxes = self._person_inside_roi(frame, roi_points)
+            if human_found:
+            	human_detected = True
+            	alert_count += 1
+            	details_parts.append(f"Human detected in ROI {roi_idx+1}")
             pts_arr = np.array(roi_points, np.int32)
             if human_found:
                 overlay = display.copy()
