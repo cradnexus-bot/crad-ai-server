@@ -6,18 +6,23 @@ import json
 import threading
 from detectors.roi_motion import ROIMotionDetector
 from detectors.fire import FireDetector
+from detectors.crowd import CrowdDetector
 
 app = FastAPI()
 
 roi_detector = None
 fire_detector = None
+crowd_detector = None
 model_ready = False
 
 def load_models():
-    global roi_detector, fire_detector, model_ready
+    global roi_detector, fire_detector, crowd_detector, model_ready
     print("Loading AI models - please wait...")
+    from ultralytics import YOLO
+    yolo_model = YOLO("models/yolov8n.pt")
     roi_detector = ROIMotionDetector("models/yolov8n.pt")
     fire_detector = FireDetector("models/fire_best.pt")
+    crowd_detector = CrowdDetector(yolo_model)
     model_ready = True
     print("All models ready!")
 
@@ -79,6 +84,7 @@ async def detect(
 
     human_detected = False
     fire_detected = False
+    crowd_detected = False
     details = ""
     annotated_image = ""
 
@@ -98,6 +104,14 @@ async def detect(
             details = fire_result.get("details", "")
             annotated_image = fire_result.get("annotated_image", "")
 
+    # Crowd Detection
+    if "crowd" in types:
+        crowd_result = crowd_detector.run(frame.copy())
+        crowd_detected = crowd_result.get("crowd_detected", False)
+        if crowd_detected:
+            details = crowd_result.get("details", "")
+            annotated_image = crowd_result.get("annotated_image", "")
+
     # Update prev_gray
     sessions[session_id]["prev_gray"] = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     del frame, contents
@@ -106,7 +120,7 @@ async def detect(
         "status": "success",
         "human_detected": human_detected,
         "fire_detected": fire_detected,
-        "crowd_detected": False,
+        "crowd_detected": crowd_detected,
         "loitering_detected": False,
         "violation_detected": False,
         "motion_detected": False,
