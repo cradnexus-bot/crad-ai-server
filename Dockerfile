@@ -19,7 +19,10 @@ RUN mkdir -p models && \
     echo "yolov8n.pt size: $(wc -c < models/yolov8n.pt) bytes" && \
     curl -L --fail -o models/fire_best.pt \
     https://github.com/tejascrad/crad-ai-server/releases/download/v1.0/fire_best.pt && \
-    echo "fire_best.pt size: $(wc -c < models/fire_best.pt) bytes"
+    echo "fire_best.pt size: $(wc -c < models/fire_best.pt) bytes" && \
+    curl -L --fail -o models/ppe_best.pt \
+    https://github.com/tejascrad/crad-ai-server/releases/download/v1.0/ppe_best.pt && \
+    echo "ppe_best.pt size: $(wc -c < models/ppe_best.pt) bytes"
 
 EXPOSE 8765
 

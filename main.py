@@ -7,22 +7,25 @@ import threading
 from detectors.roi_motion import ROIMotionDetector
 from detectors.fire import FireDetector
 from detectors.crowd import CrowdDetector
+from detectors.ppe import PPEDetector
 
 app = FastAPI()
 
 roi_detector = None
 fire_detector = None
 crowd_detector = None
+ppe_detector = None
 model_ready = False
 
 def load_models():
-    global roi_detector, fire_detector, crowd_detector, model_ready
+    global roi_detector, fire_detector, crowd_detector, ppe_detector, model_ready
     print("Loading AI models - please wait...")
     from ultralytics import YOLO
     yolo_model = YOLO("models/yolov8n.pt")
     roi_detector = ROIMotionDetector("models/yolov8n.pt")
     fire_detector = FireDetector("models/fire_best.pt")
     crowd_detector = CrowdDetector(yolo_model)
+    ppe_detector = PPEDetector("models/ppe_best.pt")
     model_ready = True
     print("All models ready!")
 
@@ -85,6 +88,7 @@ async def detect(
     human_detected = False
     fire_detected = False
     crowd_detected = False
+    ppe_violation = False
     details = ""
     annotated_image = ""
 
@@ -112,6 +116,14 @@ async def detect(
             details = crowd_result.get("details", "")
             annotated_image = crowd_result.get("annotated_image", "")
 
+    # PPE Detection
+    if "ppe" in types:
+        ppe_result = ppe_detector.run(frame.copy())
+        ppe_violation = ppe_result.get("violation_detected", False)
+        if ppe_violation:
+            details = ppe_result.get("details", "")
+            annotated_image = ppe_result.get("annotated_image", "")
+
     # Update prev_gray
     sessions[session_id]["prev_gray"] = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     del frame, contents
@@ -122,7 +134,7 @@ async def detect(
         "fire_detected": fire_detected,
         "crowd_detected": crowd_detected,
         "loitering_detected": False,
-        "violation_detected": False,
+        "violation_detected": ppe_violation,
         "motion_detected": False,
         "details": details,
         "annotated_image": annotated_image
