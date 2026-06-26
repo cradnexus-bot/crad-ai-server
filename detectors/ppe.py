@@ -5,6 +5,8 @@ from ultralytics import YOLO
 
 CONFIDENCE_THRESHOLD = 0.5
 
+VIOLATION_CLASSES = {"no-hardhat", "no-mask", "no-safety vest"}
+
 
 class PPEDetector:
 
@@ -16,6 +18,7 @@ class PPEDetector:
     def run(self, frame, all_rois=None, prev_gray=None):
         results = self.model(frame, verbose=False)
         violation_found = False
+        alerted = set()
         details_parts = []
         display = frame.copy()
 
@@ -27,20 +30,35 @@ class PPEDetector:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 class_id = int(box.cls[0])
                 class_name = self.model.names[class_id]
+                class_lower = class_name.lower()
                 color = (0, 255, 0)
 
-                if class_name.lower() == "no-helmet":
+                if class_lower == "no-hardhat":
                     color = (0, 0, 255)
-                    violation_found = True
-                    details_parts.append("No Helmet conf=" + str(round(confidence, 2)))
-                elif class_name.lower() == "no-vest":
+                    if class_lower not in alerted:
+                        violation_found = True
+                        details_parts.append("No Hardhat conf=" + str(round(confidence, 2)))
+                        alerted.add(class_lower)
+                elif class_lower == "no-mask":
+                    color = (0, 0, 200)
+                    if class_lower not in alerted:
+                        violation_found = True
+                        details_parts.append("No Mask conf=" + str(round(confidence, 2)))
+                        alerted.add(class_lower)
+                elif class_lower == "no-safety vest":
                     color = (0, 165, 255)
-                    violation_found = True
-                    details_parts.append("No Vest conf=" + str(round(confidence, 2)))
-                elif class_name.lower() == "helmet":
+                    if class_lower not in alerted:
+                        violation_found = True
+                        details_parts.append("No Safety Vest conf=" + str(round(confidence, 2)))
+                        alerted.add(class_lower)
+                elif class_lower == "hardhat":
                     color = (0, 255, 0)
-                elif class_name.lower() == "vest":
-                    color = (255, 0, 0)
+                elif class_lower == "mask":
+                    color = (0, 200, 0)
+                elif class_lower == "safety vest":
+                    color = (255, 180, 0)
+                elif class_lower == "person":
+                    color = (200, 200, 200)
 
                 cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(display, class_name + " " + str(round(confidence, 2)),
