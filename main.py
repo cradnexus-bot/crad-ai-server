@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import json
 import threading
+import time
 from detectors.roi_motion import ROIMotionDetector
 from detectors.fire import FireDetector
 from detectors.crowd import CrowdDetector
@@ -35,6 +36,17 @@ def load_models():
 threading.Thread(target=load_models, daemon=True).start()
 
 sessions = {}
+SESSION_TIMEOUT_SECONDS = 300  # 5 minutes inactivity = session expired
+
+def cleanup_stale_sessions():
+    now = time.time()
+    stale = [sid for sid, s in list(sessions.items())
+             if now - s.get("last_seen", now) > SESSION_TIMEOUT_SECONDS]
+    for sid in stale:
+        loitering_detector.clear_session(sid)
+        sessions.pop(sid, None)
+    if stale:
+        print(f"[CLEANUP] Removed {len(stale)} stale sessions: {stale}")
 
 @app.get("/health")
 def health():
@@ -62,7 +74,8 @@ async def init(
     sessions[session_id] = {
         "rois": rois,
         "prev_gray": None,
-        "detection_types": types
+        "detection_types": types,
+        "last_seen": time.time()
     }
     return {
         "status": "ready",
@@ -91,6 +104,9 @@ async def detect(
         raise HTTPException(status_code=400, detail="Cannot read image")
 
     state = sessions[session_id]
+    state["last_seen"] = time.time()
+    cleanup_stale_sessions()
+
     types = state.get("detection_types", ["human"])
 
     human_detected = False
