@@ -38,11 +38,15 @@ sessions = {}
 
 @app.get("/health")
 def health():
+    session_info = {
+        sid: s.get("detection_types", [])
+        for sid, s in sessions.items()
+    }
     return {
         "status": "ok" if model_ready else "loading",
         "model_ready": model_ready,
         "active_sessions": len(sessions),
-        "session_ids": list(sessions.keys())
+        "session_info": session_info
     }
 
 @app.post("/init")
