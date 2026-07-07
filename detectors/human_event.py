@@ -27,6 +27,7 @@ class HumanEventDetector:
                 "event_max_count": 0,
                 "event_position": "",
                 "no_human_streak": 0,
+                "last_annotated_b64": ""
             }
         return self.sessions[session_id]
 
@@ -101,6 +102,7 @@ class HumanEventDetector:
                 state["event_frames"] = []
                 state["event_max_count"] = 0
                 state["event_position"] = ""
+                state["last_annotated_b64"] = ""
 
             if len(state["event_frames"]) < GIF_MAX_FRAMES:
                 state["event_frames"].append(annotated.copy())
@@ -109,6 +111,9 @@ class HumanEventDetector:
                 state["event_max_count"] = human_count
                 h, w = frame.shape[:2]
                 state["event_position"] = self.get_position(boxes, w, h)
+
+            # Always store last annotated frame with boxes
+            state["last_annotated_b64"] = ann_b64
 
         else:
             if state["in_event"]:
@@ -126,6 +131,7 @@ class HumanEventDetector:
                         "position": state["event_position"],
                         "human_count": state["event_max_count"],
                         "gif_b64": gif_b64,
+                        "last_annotated_b64": state.get("last_annotated_b64", ""),
                         "pc_name": pc_name,
                         "status": "Detected"
                     }
@@ -136,6 +142,7 @@ class HumanEventDetector:
                     state["event_max_count"] = 0
                     state["event_position"] = ""
                     state["no_human_streak"] = 0
+                    state["last_annotated_b64"] = ""
 
         return {
             "status": "success",
