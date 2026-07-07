@@ -10,6 +10,7 @@ from detectors.fire import FireDetector
 from detectors.crowd import CrowdDetector
 from detectors.ppe import PPEDetector
 from detectors.loitering import LoiteringDetector
+from detectors.human_event import HumanEventDetector
 
 app = FastAPI()
 
@@ -18,6 +19,7 @@ fire_detector = None
 crowd_detector = None
 ppe_detector = None
 loitering_detector = None
+human_event_detector = None
 model_ready = False
 
 def load_models():
@@ -30,6 +32,7 @@ def load_models():
     crowd_detector = CrowdDetector(yolo_model)
     ppe_detector = PPEDetector("models/ppe_best.pt")
     loitering_detector = LoiteringDetector(yolo_model)
+    human_event_detector = HumanEventDetector(yolo_model)
     model_ready = True
     print("All models ready!")
 
@@ -157,6 +160,27 @@ async def detect(
             details = loiter_result.get("details", "")
             annotated_image = loiter_result.get("annotated_image", "")
 
+# Human Event Detection
+if "human_event" in types:
+    human_result = human_event_detector.run(
+        frame.copy(), session_id, base_file_name, pc_name)
+    if human_result.get("event_data"):
+        event_data = human_result["event_data"]
+        # Return event data to C# for saving to Supabase
+        return {
+            "status": "success",
+            "human_detected": human_result.get("human_detected", False),
+            "human_event": True,
+            "event_data": event_data,
+            "fire_detected": False,
+            "crowd_detected": False,
+            "loitering_detected": False,
+            "violation_detected": False,
+            "motion_detected": False,
+            "details": "Human event detected",
+            "annotated_image": human_result.get("annotated_image", "")
+        }
+
     # Update prev_gray
     sessions[session_id]["prev_gray"] = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     del frame, contents
@@ -176,6 +200,7 @@ async def detect(
 @app.post("/session/end")
 async def end(session_id: str = Form(...)):
     loitering_detector.clear_session(session_id)
+    human_event_detector.clear_session(session_id)
     sessions.pop(session_id, None)
     return {"status":"ok"}
 
