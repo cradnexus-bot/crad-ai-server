@@ -5,7 +5,7 @@ import time
 from PIL import Image
 import io
 
-CONFIDENCE_THRESHOLD = 0.4
+CONFIDENCE_THRESHOLD = 0.25
 GRACE_FRAMES = 2
 GIF_MAX_FRAMES = 12
 BOX_COLOR = (0, 255, 0)
