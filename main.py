@@ -23,7 +23,7 @@ human_event_detector = None
 model_ready = False
 
 def load_models():
-    global roi_detector, fire_detector, crowd_detector, ppe_detector, loitering_detector, model_ready
+    global roi_detector, fire_detector, crowd_detector, ppe_detector, loitering_detector, human_event_detector, model_ready
     print("Loading AI models - please wait...")
     from ultralytics import YOLO
     yolo_model = YOLO("models/yolov8n.pt")
@@ -39,7 +39,7 @@ def load_models():
 threading.Thread(target=load_models, daemon=True).start()
 
 sessions = {}
-SESSION_TIMEOUT_SECONDS = 300  # 5 minutes inactivity = session expired
+SESSION_TIMEOUT_SECONDS = 300
 
 def cleanup_stale_sessions():
     now = time.time()
@@ -47,6 +47,7 @@ def cleanup_stale_sessions():
              if now - s.get("last_seen", now) > SESSION_TIMEOUT_SECONDS]
     for sid in stale:
         loitering_detector.clear_session(sid)
+        human_event_detector.clear_session(sid)
         sessions.pop(sid, None)
     if stale:
         print(f"[CLEANUP] Removed {len(stale)} stale sessions: {stale}")
@@ -117,6 +118,7 @@ async def detect(
     crowd_detected = False
     ppe_violation = False
     loitering_detected = False
+    human_event = None
     details = ""
     annotated_image = ""
 
@@ -160,26 +162,15 @@ async def detect(
             details = loiter_result.get("details", "")
             annotated_image = loiter_result.get("annotated_image", "")
 
-# Human Event Detection
-if "human_event" in types:
-    human_result = human_event_detector.run(
-        frame.copy(), session_id, base_file_name, pc_name)
-    if human_result.get("event_data"):
-        event_data = human_result["event_data"]
-        # Return event data to C# for saving to Supabase
-        return {
-            "status": "success",
-            "human_detected": human_result.get("human_detected", False),
-            "human_event": True,
-            "event_data": event_data,
-            "fire_detected": False,
-            "crowd_detected": False,
-            "loitering_detected": False,
-            "violation_detected": False,
-            "motion_detected": False,
-            "details": "Human event detected",
-            "annotated_image": human_result.get("annotated_image", "")
-        }
+    # Human Event Detection
+    if "human_event" in types:
+        human_result = human_event_detector.run(
+            frame.copy(), session_id, base_file_name, pc_name)
+        human_detected = human_result.get("human_detected", False)
+        human_event = human_result.get("event_data", None)
+        if human_detected:
+            annotated_image = human_result.get("annotated_image", "")
+            details = "Human detected"
 
     # Update prev_gray
     sessions[session_id]["prev_gray"] = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -193,6 +184,7 @@ if "human_event" in types:
         "loitering_detected": loitering_detected,
         "violation_detected": ppe_violation,
         "motion_detected": False,
+        "human_event": human_event,
         "details": details,
         "annotated_image": annotated_image
     }
